@@ -27,12 +27,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .session-item .signal.stable{background:#1a3a1a;color:#4caf50}
 .session-item .signal.alert{background:#3a1a1a;color:#ff4466}
 .no-sessions{color:#555;text-align:center;padding:30px;font-size:13px}
-.sidebar-footer{padding:12px 16px;border-top:1px solid #1a1a28;font-size:11px;color:#444}
+.sidebar-footer{padding:12px 16px;border-top:1px solid #1a1a28;display:flex;gap:8px;align-items:center}
+.sidebar-footer button{flex:1;padding:8px;background:transparent;border:1px solid #1e1e2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer;transition:.2s}
+.sidebar-footer button:hover{border-color:#6c5ce7;color:#ddd}
 
 /* Main area */
 .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* Dashboard view (no session selected) */
+/* Dashboard view */
 .dashboard{padding:30px;overflow-y:auto;flex:1}
 .dashboard h1{font-size:22px;margin-bottom:8px}
 .dashboard .subtitle{color:#666;font-size:14px;margin-bottom:24px}
@@ -50,7 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .topic-card .kw{font-size:11px;color:#555;margin-top:6px}
 
 /* Chat view */
-.chat-header{padding:16px 24px;border-bottom:1px solid #1a1a28;display:flex;align-items:center;gap:12px}
+.chat-header{padding:16px 24px;border-bottom:1px solid #1a1a28;display:flex;align-items:center;gap:12px;min-height:56px}
 .chat-header h2{font-size:16px;font-weight:500}
 .chat-header .model-badge{font-size:11px;color:#6c5ce7;background:#1a1a2e;padding:3px 8px;border-radius:4px}
 .chat-header .status{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-left:auto}
@@ -59,33 +61,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .chat-header .dot.yellow{background:#ffa726}
 .chat-header .dot.red{background:#ff4466}
 .chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
-.msg{max-width:80%;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.5;animation:fadeIn .2s ease}
+.msg{max-width:85%;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.5;animation:fadeIn .2s ease}
 .msg.user{background:#6c5ce7;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .msg.assistant{background:#14141e;color:#ddd;align-self:flex-start;border:1px solid #1e1e2a;border-bottom-left-radius:4px}
 .msg .actions{font-size:11px;color:#4caf50;margin-top:8px;padding-top:8px;border-top:1px solid #1e1e2a}
 .msg .time{font-size:10px;color:#555;margin-top:6px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .chat-input{display:flex;gap:8px;padding:16px 24px;border-top:1px solid #1a1a28}
-.chat-input textarea{flex:1;padding:12px;background:#0c0c14;border:1px solid #1e1e2a;border-radius:8px;color:#ddd;font-size:13px;resize:none;outline:none;min-height:44px;font-family:inherit}
+.chat-input textarea{flex:1;padding:12px;background:#0c0c14;border:1px solid #1e1e2a;border-radius:8px;color:#ddd;font-size:13px;resize:none;outline:none;min-height:44px;max-height:120px;font-family:inherit}
 .chat-input textarea:focus{border-color:#6c5ce7}
 .chat-input button{padding:12px 20px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:500;font-size:13px;transition:.2s;white-space:nowrap}
 .chat-input button:hover{background:#7d6ff0}
 .chat-input button:disabled{opacity:.5;cursor:default}
 .welcome-message{text-align:center;color:#555;padding:60px 20px}
-.welcome-message p{font-size:14px;margin-bottom:8px}
+
+/* Modal */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn .15s ease}
+.modal{background:#14141e;border:1px solid #1e1e2a;border-radius:16px;padding:24px;width:400px;max-width:90vw}
+.modal h3{margin-bottom:16px}
+.modal label{font-size:12px;color:#888;display:block;margin-bottom:6px}
+.modal select{width:100%;padding:10px;background:#0a0a0f;border:1px solid #1e1e2a;border-radius:8px;color:#fff;font-size:13px;margin-bottom:16px}
+.modal .btn{padding:10px 20px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:500;float:right}
+.modal .btn:hover{background:#7d6ff0}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:#666;font-size:18px;cursor:pointer}
 </style>
 </head>
 <body>
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <h2>📈 Sessions</h2>
+    <h2>💬 Sessions</h2>
     <button class="new-btn" onclick="newSession()">+ New Session</button>
   </div>
   <div class="session-list" id="sessionList">
-    <div class="no-sessions">Loading sessions...</div>
+    <div class="no-sessions">Loading...</div>
   </div>
-  <div class="sidebar-footer">TrendGoogle · Demand Research</div>
+  <div class="sidebar-footer">
+    <button onclick="openSettings()">⚙️ Settings</button>
+    <button onclick="switchToDashboard()">📊 Dashboard</button>
+  </div>
 </div>
 
 <div class="main" id="mainArea">
@@ -110,8 +124,7 @@ let sessions = {};
 let activeSession = null;
 let chatHistories = {};
 
-// Init
-if (!apiKey) { document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ff4466">Server error: API key not injected. Refresh.</div>'; }
+if (!apiKey) { document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ff4466">Server error: no API key. Hard refresh.</div>'; }
 
 async function loadDashboard() {
   try {
@@ -129,15 +142,13 @@ async function loadDashboard() {
       if (!chatHistories[a.topic_name]) chatHistories[a.topic_name] = [];
     });
 
-    // Stats
     document.querySelector('.stat-card:nth-child(1) .val').textContent = assets.length;
     document.querySelector('.stat-card:nth-child(2) .val').textContent = alerts.length;
     document.querySelector('.stat-card:nth-child(3) .val').textContent = usageR.count || 0;
 
-    // Topic grid
     const grid = document.getElementById('topicGrid');
     if (assets.length === 0) {
-      grid.innerHTML = '<div style="text-align:center;color:#555;padding:40px;grid-column:1/-1">No topics yet. Click "+ New Session" to add one.</div>';
+      grid.innerHTML = '<div style="text-align:center;color:#555;padding:40px;grid-column:1/-1">No sessions yet. Click "+ New Session" to start.</div>';
     } else {
       grid.innerHTML = assets.map(a => {
         const ami = a.ami_score != null ? parseFloat(a.ami_score).toFixed(1) : '—';
@@ -151,11 +162,9 @@ async function loadDashboard() {
         </div>`;
       }).join('');
     }
-
-    // Sidebar list
     renderSidebar();
   } catch(e) {
-    document.getElementById('topicGrid').innerHTML = '<div style="text-align:center;color:#ff4466;padding:40px;grid-column:1/-1">Could not connect. Is the server running?</div>';
+    document.getElementById('topicGrid').innerHTML = '<div style="text-align:center;color:#ff4466;padding:40px;grid-column:1/-1">Could not connect.</div>';
   }
 }
 
@@ -188,10 +197,10 @@ function openSession(name) {
   
   const msgs = chatHistories[name] || [];
   const msgHtml = msgs.length === 0 
-    ? '<div class="welcome-message"><p>👋 Chat with AI about <b>'+name.replace(/_/g,' ')+'</b></p><p style="font-size:12px">Ask about trend analysis, set alerts, or change thresholds</p></div>'
+    ? '<div class="welcome-message"><p>👋 Ask the AI about <b>'+name.replace(/_/g,' ')+'</b></p><p style="font-size:12px;color:#555">Analyze trends, set alerts, change thresholds</p></div>'
     : msgs.map(m => {
       const actions = m.actions && m.actions.length ? '<div class="actions">✓ '+m.actions.join(', ')+'</div>' : '';
-      return `<div class="msg ${m.role}"><div>${m.text}</div>${actions}<div class="time">${m.time||''}</div></div>`;
+      return `<div class="msg ${m.role}"><div>${m.text.replace(/\n/g,'<br>')}</div>${actions}<div class="time">${m.time||''}</div></div>`;
     }).join('');
 
   main.innerHTML = `
@@ -199,14 +208,12 @@ function openSession(name) {
       <h2>${name.replace(/_/g,' ')}</h2>
       <span class="model-badge">${selectedModel}</span>
       <div class="status"><span class="dot ${sig==='STABLE'?'green':'yellow'}"></span>${sig}</div>
-      <button class="new-btn" style="width:auto;padding:6px 12px;font-size:12px;margin-left:auto" onclick="switchToDashboard()">📊 Dashboard</button>
     </div>
     <div class="chat-messages" id="chatMessages">${msgHtml}</div>
     <div class="chat-input">
       <textarea id="chatInput" placeholder="Ask about this trend..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
       <button id="chatSendBtn" onclick="sendChat()">Send</button>
-    </div>
-  `;
+    </div>`;
   document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
   document.getElementById('chatInput').focus();
 }
@@ -216,7 +223,7 @@ function switchToDashboard() {
   document.getElementById('mainArea').innerHTML = `
     <div class="dashboard" id="dashboardView">
       <h1>📊 TrendGoogle</h1>
-      <p class="subtitle">AI-powered demand research &amp; data arbitrage</p>
+      <p class="subtitle">AI-powered demand research & data arbitrage</p>
       <div class="stats" id="statsRow">
         <div class="stat-card"><div class="val">—</div><div class="label">Topics</div></div>
         <div class="stat-card"><div class="val">—</div><div class="label">Alerts</div></div>
@@ -235,12 +242,10 @@ async function sendChat() {
   if (!msg || !activeSession) return;
   input.value = ''; btn.disabled = true;
 
-  // Add user message
   const hist = chatHistories[activeSession] || [];
   hist.push({role:'user', text:msg, time:new Date().toLocaleTimeString()});
   chatHistories[activeSession] = hist;
 
-  // Show thinking indicator
   const msgsDiv = document.getElementById('chatMessages');
   msgsDiv.innerHTML += '<div class="msg assistant" id="thinkingMsg"><div style="color:#888">Thinking...</div></div>';
   msgsDiv.scrollTop = msgsDiv.scrollHeight;
@@ -252,10 +257,7 @@ async function sendChat() {
       body:JSON.stringify({message:msg, model:selectedModel})
     });
     const data = await r.json();
-    
-    // Remove thinking indicator
-    const t = document.getElementById('thinkingMsg');
-    if (t) t.remove();
+    document.getElementById('thinkingMsg')?.remove();
 
     if (data.detail) {
       hist.push({role:'assistant', text:'Error: '+data.detail, time:new Date().toLocaleTimeString()});
@@ -263,43 +265,136 @@ async function sendChat() {
       hist.push({role:'assistant', text:data.reply, actions:data.actions_taken, time:new Date().toLocaleTimeString()});
     }
     
-    // Re-render messages
     msgsDiv.innerHTML = hist.map(m => {
       const actions = m.actions && m.actions.length ? '<div class="actions">✓ '+m.actions.join(', ')+'</div>' : '';
-      return `<div class="msg ${m.role}"><div>${m.text}</div>${actions}<div class="time">${m.time||''}</div></div>`;
+      return `<div class="msg ${m.role}"><div>${m.text.replace(/\n/g,'<br>')}</div>${actions}<div class="time">${m.time||''}</div></div>`;
     }).join('');
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    loadDashboard(); // refresh sidebar data
   } catch(e) {
-    const t = document.getElementById('thinkingMsg');
-    if (t) t.remove();
-    hist.push({role:'assistant', text:'Could not reach the AI. Is the server running?', time:new Date().toLocaleTimeString()});
-    msgsDiv.innerHTML = hist.map(m => `<div class="msg ${m.role}"><div>${m.text}</div><div class="time">${m.time||''}</div></div>`).join('');
+    document.getElementById('thinkingMsg')?.remove();
+    hist.push({role:'assistant', text:'Could not reach the AI.', time:new Date().toLocaleTimeString()});
+    msgsDiv.innerHTML = hist.map(m => `<div class="msg ${m.role}"><div>${m.text.replace(/\n/g,'<br>')}</div><div class="time">${m.time||''}</div></div>`).join('');
   }
   btn.disabled = false;
   document.getElementById('chatInput').focus();
 }
 
+// New Session — conversational topic creation
+let exploreHistory = [];
+
 function newSession() {
-  const p = prompt('What trend do you want to research?');
-  if (!p) return;
-  
-  // Open dashboard while processing
-  switchToDashboard();
-  
-  fetch(API+'/api/v1/discover', {
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-API-Key':apiKey},
-    body:JSON.stringify({prompt:p, model:selectedModel})
-  }).then(r=>r.json()).then(d => {
-    const err = d.message || d.detail || null;
-    if (err) { alert('Error: '+err); return; }
-    alert('✅ '+d.topic_name.replace(/_/g,' ')+' added!\nKeywords: '+d.keywords.join(', '));
-    loadDashboard();
-    setTimeout(() => openSession(d.topic_name), 300);
-  }).catch(e => { alert('Error: '+e.message); loadDashboard(); });
+  exploreHistory = [];
+  activeSession = null;
+  renderSidebar();
+
+  const main = document.getElementById('mainArea');
+  main.innerHTML = `
+    <div class="chat-header">
+      <h2>💡 New Session</h2>
+      <span class="model-badge">${selectedModel}</span>
+      <div class="status"><span class="dot green"></span>exploring</div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg assistant" style="align-self:flex-start;background:#14141e;border:1px solid #1e1e2a;border-radius:12px;border-bottom-left-radius:4px;padding:12px 16px;color:#ddd;font-size:13px;line-height:1.5">
+        👋 Hi! Tell me what market or trend you want to track.<br><br>
+        <span style="color:#666;font-size:12px">For example: <i>"I want to track copper prices in Kenya"</i> or <i>"Game development assets on free platforms"</i><br><br>
+        I'll ask questions to narrow it down. Just say <b>"done"</b> or <b>"finished"</b> when you're ready.</span>
+      </div>
+    </div>
+    <div class="chat-input">
+      <textarea id="chatInput" placeholder="Describe what you want to track..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendExplore()}"></textarea>
+      <button id="chatSendBtn" onclick="sendExplore()">Send</button>
+    </div>`;
+  document.getElementById('chatInput').focus();
 }
 
-// Load on start
+async function sendExplore() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('chatSendBtn');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = ''; btn.disabled = true;
+
+  exploreHistory.push({role:'user', content: msg});
+
+  const msgsDiv = document.getElementById('chatMessages');
+  msgsDiv.innerHTML += '<div class="msg user"><div>'+msg.replace(/</g,'&lt;')+'</div></div>';
+  msgsDiv.innerHTML += '<div class="msg assistant" id="thinkingMsg"><div style="color:#888">Thinking...</div></div>';
+  msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+  try {
+    const r = await fetch(API+'/api/v1/explore', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+      body:JSON.stringify({
+        message: msg,
+        history: exploreHistory.slice(0, -1),
+        model: selectedModel
+      })
+    });
+    const data = await r.json();
+    document.getElementById('thinkingMsg')?.remove();
+
+    if (data.detail) {
+      msgsDiv.innerHTML += '<div class="msg assistant" style="align-self:flex-start;background:#14141e;border:1px solid #1e1e2a;border-radius:12px;padding:12px 16px;color:#ff4466;font-size:13px">Error: '+data.detail+'</div>';
+      exploreHistory.pop();
+    } else {
+      msgsDiv.innerHTML += '<div class="msg assistant" style="align-self:flex-start;background:#14141e;border:1px solid #1e1e2a;border-radius:12px;padding:12px 16px;color:#ddd;font-size:13px;line-height:1.5"><div>'+data.reply.replace(/\n/g,'<br>')+'</div></div>';
+      exploreHistory.push({role:'assistant', content: data.reply});
+
+      if (data.ready) {
+        // Topic created! Switch to it
+        const topicName = data.topic_name.replace(/\s+/g,'_').toLowerCase();
+        if (topicName && sessions[topicName]) {
+          setTimeout(() => {
+            openSession(topicName);
+            loadDashboard();
+          }, 500);
+        } else {
+          // Wait and refresh
+          setTimeout(() => { loadDashboard(); }, 1000);
+        }
+      }
+    }
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+  } catch(e) {
+    document.getElementById('thinkingMsg')?.remove();
+    msgsDiv.innerHTML += '<div class="msg assistant" style="align-self:flex-start;background:#14141e;border:1px solid #1e1e2a;border-radius:12px;padding:12px 16px;color:#ff4466;font-size:13px">Could not reach the server.</div>';
+  }
+  btn.disabled = false;
+  document.getElementById('chatInput').focus();
+}
+
+// Settings modal
+function openSettings() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>⚙️ Settings</h3>
+      <label>AI Model for Trend Analysis</label>
+      <select id="modelSelect">
+        <option value="gemini-3.1-flash-lite" ${selectedModel==='gemini-3.1-flash-lite'?'selected':''}>Gemini 3.1 Flash-Lite (fast, cheap)</option>
+        <option value="gemini-3.5-flash" ${selectedModel==='gemini-3.5-flash'?'selected':''}>Gemini 3.5 Flash (best quality)</option>
+        <option value="gemini-3.1-pro" ${selectedModel==='gemini-3.1-pro'?'selected':''}>Gemini 3.1 Pro (preview)</option>
+        <option value="gemini-2.5-flash" ${selectedModel==='gemini-2.5-flash'?'selected':''}>Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-flash-lite" ${selectedModel==='gemini-2.5-flash-lite'?'selected':''}>Gemini 2.5 Flash-Lite</option>
+        <option value="gemini-2.5-pro" ${selectedModel==='gemini-2.5-pro'?'selected':''}>Gemini 2.5 Pro</option>
+      </select>
+      <button class="btn" onclick="saveSettings()">Save</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function saveSettings() {
+  selectedModel = document.getElementById('modelSelect').value;
+  localStorage.setItem('tgmodel', selectedModel);
+  document.querySelector('.modal-overlay')?.remove();
+}
+
+// Init
 loadDashboard();
 setInterval(loadDashboard, 15000);
 </script>

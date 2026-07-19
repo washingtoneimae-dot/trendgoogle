@@ -587,6 +587,123 @@ Be concise, direct, and useful. Use data from the context. If the user asks abou
     return ChatResponse(reply=clean_reply, actions_taken=actions_taken)
 
 # ============================================================================
+# EXPLORE ENDPOINT (Conversational topic creation)
+# ============================================================================
+
+class ExploreRequest(BaseModel):
+    message: str
+    history: list = []
+    model: str = "gemini-3.1-flash-lite"
+
+class ExploreResponse(BaseModel):
+    reply: str
+    ready: bool = False
+    topic_name: str = ""
+    keywords: list = []
+    analysis: dict = {}
+
+@app.post("/api/v1/explore", tags=["Chat"])
+def explore_topic(req: ExploreRequest, user: dict = Depends(verify_api_key)):
+    """Chat to refine a trend idea. When user says they're done, saves the topic."""
+    from trendfinder import load_env, get_api_key, parse_with_gemini, validate_keywords, save_profile
+    import json, re
+
+    load_env()
+
+    # Build conversation history for context
+    conversation = ""
+    for msg in req.history:
+        role = "User" if msg.get("role") == "user" else "Assistant"
+        conversation += f"{role}: {msg.get('content', '')}\n"
+    conversation += f"User: {req.message}\n"
+
+    system_prompt = """You are a Demand Research Consultant. Your job is to help the user define a market trend to track.
+
+Guide them with questions:
+- What industry/market are they interested in?
+- What specific keywords describe the trend?
+- What geography?
+- How aggressive should alerts be?
+
+When the user indicates they are finished defining their topic (e.g. "done", "finished", "save it", "that's it", "I'm done"), respond with:
+
+[DONE]
+topic_name: descriptive_name_with_underscores
+keywords: ["keyword1", "keyword2", "keyword3", ...]
+spike_threshold: 25.0
+drop_threshold: -25.0
+analysis: Brief market analysis description
+
+Otherwise, just chat with them naturally to refine their idea. Ask questions to narrow down what they want to track."""
+
+    import google.genai as genai
+    api_key = get_api_key()
+    if not api_key:
+        raise HTTPException(400, "GEMINI_API_KEY not set on server")
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=req.model,
+        contents=[{"role": "user", "parts": [{"text": system_prompt + "\n\n" + conversation}]}],
+        config={"response_mime_type": "text/plain"}
+    )
+    reply = response.text
+
+    # Check if AI signaled completion
+    ready = False
+    topic_name = ""
+    keywords = []
+    analysis = {}
+
+    if "[DONE]" in reply:
+        ready = True
+        # Extract structured data from AI response
+        tn = re.search(r'topic_name:\s*(\S+)', reply)
+        kw = re.search(r'keywords:\s*(\[.*?\])', reply, re.DOTALL)
+        st = re.search(r'spike_threshold:\s*([\d.]+)', reply)
+        dt = re.search(r'drop_threshold:\s*([-\d.]+)', reply)
+        an = re.search(r'analysis:\s*(.*?)(?:\n[A-Z_]+\s*:|$)', reply, re.DOTALL)
+
+        if tn:
+            topic_name = tn.group(1)
+        if kw:
+            try:
+                keywords = json.loads(kw.group(1))
+            except:
+                keywords = [kw.group(1)]
+        if an:
+            analysis = {"description": an.group(1).strip()}
+
+        # Create the topic via discover flow
+        if topic_name and keywords:
+            try:
+                # Use parse_with_gemini for full analysis
+                result = parse_with_gemini(f"Analyze {topic_name}: {','.join(keywords[:3])}", req.model)
+                valid = validate_keywords(result)
+                if valid:
+                    alert_config = {"spike_threshold": float(st.group(1)) if st else 25.0,
+                                    "drop_threshold": float(dt.group(1)) if dt else -25.0}
+                    save_profile(result, alert_config)
+                    analysis.update(result.get("analysis", {}))
+                    reply += f"\n\n✅ Session **{topic_name.replace('_',' ')}** created and monitoring started!"
+                else:
+                    reply += "\n\n⚠️ Keywords returned no data. Try being more specific."
+                    ready = False
+            except Exception as e:
+                reply += f"\n\n⚠️ Could not create: {str(e)}"
+                ready = False
+
+    clean_reply = re.sub(r'\[DONE\].*', '', reply, flags=re.DOTALL).strip()
+
+    return ExploreResponse(
+        reply=clean_reply or reply,
+        ready=ready,
+        topic_name=topic_name.replace("_", " ").title() if topic_name else "",
+        keywords=keywords,
+        analysis=analysis
+    )
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
