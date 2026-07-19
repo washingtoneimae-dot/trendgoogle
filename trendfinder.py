@@ -93,8 +93,8 @@ RULES:
 # ---------------------------------------------------------------------------
 # LLM: Gemini
 # ---------------------------------------------------------------------------
-
-def parse_with_gemini(prompt: str) -> dict:
+def parse_with_gemini(prompt: str, model_name: str = "gemini-3.1-flash-lite") -> dict:
+    """Call Gemini API to extract structured data from a user prompt."""
     import google.genai as genai
 
     load_env()
@@ -105,9 +105,9 @@ def parse_with_gemini(prompt: str) -> dict:
     client = genai.Client(api_key=api_key)
     full_prompt = f"{MASTER_PROMPT}\n\nUser prompt: {prompt}"
 
-    print(f"[LLM] Analyzing with Gemini 2.5 Flash...")
+    print(f"[LLM] Analyzing with {model_name}...")
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model_name,
         contents=full_prompt,
         config={"response_mime_type": "application/json"}
     )

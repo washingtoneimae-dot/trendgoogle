@@ -3,170 +3,305 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TrendGoogle Dashboard</title>
+<title>TrendGoogle — Demand Research</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Inter',sans-serif;background:#0a0a0f;color:#e0e0e0;height:100vh;display:flex}
-  .sidebar{width:240px;background:#111118;border-right:1px solid #1e1e2a;padding:24px 16px;display:flex;flex-direction:column;gap:8px}
-  .logo{font-size:20px;font-weight:700;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:10px}
-  .logo span{color:#00d4aa}
-  .nav-item{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;color:#888;transition:all .15s}
-  .nav-item:hover,.nav-item.active{background:#1a1a2e;color:#fff}
-  .nav-item.active{border-left:3px solid #00d4aa}
-  .main{flex:1;padding:32px;overflow-y:auto;max-width:1200px}
-  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
-  .header h1{font-size:24px;font-weight:600}
-  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
-  .stat-card{background:#14141e;border:1px solid #1e1e2a;border-radius:12px;padding:20px}
-  .stat-card .label{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px}
-  .stat-card .value{font-size:28px;font-weight:700;margin-top:8px}
-  .stat-card .value.green{color:#00d4aa}
-  .stat-card .value.red{color:#ff4466}
-  .stat-card .value.yellow{color:#ffaa44}
-  .topic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-  .topic-card{background:#14141e;border:1px solid #1e1e2a;border-radius:12px;padding:20px;cursor:pointer;transition:all .15s}
-  .topic-card:hover{border-color:#00d4aa44}
-  .topic-card .name{font-size:16px;font-weight:600;margin-bottom:4px}
-  .topic-card .keywords{font-size:12px;color:#666;margin-bottom:12px}
-  .topic-card .metrics{display:flex;gap:16px}
-  .topic-card .metric{font-size:13px}
-  .topic-card .metric .val{font-weight:600}
-  .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
-  .tag.stable{background:#00d4aa22;color:#00d4aa}
-  .tag.alert{background:#ff446622;color:#ff4466}
-  .tag.decay{background:#ffaa4422;color:#ffaa44}
-  .btn{background:#00d4aa;color:#000;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px}
-  .btn:hover{opacity:.85}
-  .hidden{display:none!important}
-  .status-bar{background:#14141e;border:1px solid #1e1e2a;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#888;display:flex;align-items:center;gap:8px}
-  .status-bar .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .dot.green{background:#00d4aa}
-  .dot.red{background:#ff4466}
-  .alert-item{display:flex;align-items:center;gap:12px;padding:12px;background:#14141e;border:1px solid #1e1e2a;border-radius:8px;margin-bottom:8px}
-  .alert-item .type{font-weight:600}
-  .alert-item .time{color:#666;font-size:12px;margin-left:auto}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#07070d;color:#ddd;display:flex;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a3a;border-radius:3px}
+
+/* Sidebar */
+.sidebar{width:260px;min-width:260px;background:#0c0c14;border-right:1px solid #1a1a28;display:flex;flex-direction:column;height:100vh}
+.sidebar-header{padding:16px;border-bottom:1px solid #1a1a28}
+.sidebar-header h2{font-size:14px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.new-btn{width:100%;padding:10px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;transition:.2s}
+.new-btn:hover{background:#7d6ff0}
+.session-list{flex:1;overflow-y:auto;padding:8px}
+.session-item{padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;margin-bottom:4px;border:1px solid transparent}
+.session-item:hover{background:#14141e;border-color:#1e1e2a}
+.session-item.active{background:#1a1a2e;border-color:#6c5ce7}
+.session-item .name{font-size:13px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-item .meta{font-size:11px;color:#666;margin-top:3px}
+.session-item .signal{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.session-item .signal.stable{background:#1a3a1a;color:#4caf50}
+.session-item .signal.alert{background:#3a1a1a;color:#ff4466}
+.no-sessions{color:#555;text-align:center;padding:30px;font-size:13px}
+.sidebar-footer{padding:12px 16px;border-top:1px solid #1a1a28;font-size:11px;color:#444}
+
+/* Main area */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Dashboard view (no session selected) */
+.dashboard{padding:30px;overflow-y:auto;flex:1}
+.dashboard h1{font-size:22px;margin-bottom:8px}
+.dashboard .subtitle{color:#666;font-size:14px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#0c0c14;border:1px solid #1a1a28;border-radius:12px;padding:16px}
+.stat-card .val{font-size:24px;font-weight:600;color:#fff}
+.stat-card .label{font-size:12px;color:#666;margin-top:4px}
+.topic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.topic-card{background:#0c0c14;border:1px solid #1a1a28;border-radius:12px;padding:16px;cursor:pointer;transition:.15s}
+.topic-card:hover{border-color:#6c5ce7}
+.topic-card h3{font-size:14px;margin-bottom:6px;color:#eee}
+.topic-card .ami{font-size:20px;font-weight:600}
+.topic-card .ami.up{color:#4caf50}
+.topic-card .ami.down{color:#ff4466}
+.topic-card .kw{font-size:11px;color:#555;margin-top:6px}
+
+/* Chat view */
+.chat-header{padding:16px 24px;border-bottom:1px solid #1a1a28;display:flex;align-items:center;gap:12px}
+.chat-header h2{font-size:16px;font-weight:500}
+.chat-header .model-badge{font-size:11px;color:#6c5ce7;background:#1a1a2e;padding:3px 8px;border-radius:4px}
+.chat-header .status{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin-left:auto}
+.chat-header .dot{width:8px;height:8px;border-radius:50%}
+.chat-header .dot.green{background:#4caf50}
+.chat-header .dot.yellow{background:#ffa726}
+.chat-header .dot.red{background:#ff4466}
+.chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.msg{max-width:80%;padding:12px 16px;border-radius:12px;font-size:13px;line-height:1.5;animation:fadeIn .2s ease}
+.msg.user{background:#6c5ce7;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.assistant{background:#14141e;color:#ddd;align-self:flex-start;border:1px solid #1e1e2a;border-bottom-left-radius:4px}
+.msg .actions{font-size:11px;color:#4caf50;margin-top:8px;padding-top:8px;border-top:1px solid #1e1e2a}
+.msg .time{font-size:10px;color:#555;margin-top:6px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-input{display:flex;gap:8px;padding:16px 24px;border-top:1px solid #1a1a28}
+.chat-input textarea{flex:1;padding:12px;background:#0c0c14;border:1px solid #1e1e2a;border-radius:8px;color:#ddd;font-size:13px;resize:none;outline:none;min-height:44px;font-family:inherit}
+.chat-input textarea:focus{border-color:#6c5ce7}
+.chat-input button{padding:12px 20px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:500;font-size:13px;transition:.2s;white-space:nowrap}
+.chat-input button:hover{background:#7d6ff0}
+.chat-input button:disabled{opacity:.5;cursor:default}
+.welcome-message{text-align:center;color:#555;padding:60px 20px}
+.welcome-message p{font-size:14px;margin-bottom:8px}
 </style>
 </head>
 <body>
+
 <div class="sidebar">
-  <div class="logo">&#x1F4C8; <span>TrendGoogle</span></div>
-  <div class="nav-item active">&#x1F4CA; Dashboard</div>
-  <div class="nav-item">&#x1F50D; Add Topic</div>
-  <div class="nav-item">&#x1F514; Alerts</div>
-  <div class="nav-item">&#x1F511; API Keys</div>
+  <div class="sidebar-header">
+    <h2>📈 Sessions</h2>
+    <button class="new-btn" onclick="newSession()">+ New Session</button>
+  </div>
+  <div class="session-list" id="sessionList">
+    <div class="no-sessions">Loading sessions...</div>
+  </div>
+  <div class="sidebar-footer">TrendGoogle · Demand Research</div>
 </div>
-<div class="main">
-  <div class="header">
-    <h1>Dashboard</h1>
-    <button class="btn" onclick="addTopic()">+ New Topic</button>
-  </div>
-  <div class="status-bar" id="statusBar">
-    <span class="dot" id="statusDot"></span>
-    <span id="statusText">Loading...</span>
-  </div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="label">Monitored Topics</div><div class="value" id="totalTopics">--</div></div>
-    <div class="stat-card"><div class="label">Active Alerts</div><div class="value yellow" id="activeAlerts">--</div></div>
-    <div class="stat-card"><div class="label">Avg AMI</div><div class="value green" id="avgAmi">--</div></div>
-    <div class="stat-card"><div class="label">API Calls Today</div><div class="value" id="apiCalls">--</div></div>
-  </div>
-  <h2 style="margin-bottom:16px">Monitored Topics</h2>
-  <div class="topic-grid" id="topicGrid">
-    <div style="grid-column:1/-1;text-align:center;color:#666;padding:40px" id="emptyMsg">No data yet.</div>
+
+<div class="main" id="mainArea">
+  <div class="dashboard" id="dashboardView">
+    <h1>📊 TrendGoogle</h1>
+    <p class="subtitle">AI-powered demand research &amp; data arbitrage</p>
+    <div class="stats" id="statsRow">
+      <div class="stat-card"><div class="val">—</div><div class="label">Topics</div></div>
+      <div class="stat-card"><div class="val">—</div><div class="label">Alerts</div></div>
+      <div class="stat-card"><div class="val">—</div><div class="label">API Calls</div></div>
+    </div>
+    <div class="topic-grid" id="topicGrid"></div>
   </div>
 </div>
+
 <script>
 const API = '';
-let apiKey = localStorage.getItem('tgkey') || '';
-const KEY = 'sk_live_'; // partial - will prompt
+const MODEL_DEFAULT = 'gemini-3.1-flash-lite';
+let apiKey = INJECTED_KEY || localStorage.getItem('tgkey') || '';
+let selectedModel = localStorage.getItem('tgmodel') || MODEL_DEFAULT;
+let sessions = {};
+let activeSession = null;
+let chatHistories = {};
 
-async function load() {
-  // Try to get an API key
-  while (!apiKey) {
-    const k = prompt('Enter your TrendGoogle API key:');
-    if (!k) { 
-      // No key - show offline mode
-      document.getElementById('statusDot').className = 'dot red';
-      document.getElementById('statusText').textContent = 'No API key. Refresh and enter one, or start the daemon first.';
-      return;
-    }
-    apiKey = k;
-    localStorage.setItem('tgkey', k);
-  }
-  const h = {'X-API-Key': apiKey, 'Accept': 'application/json'};
+// Init
+if (!apiKey) { document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#ff4466">Server error: API key not injected. Refresh.</div>'; }
+
+async function loadDashboard() {
   try {
-    const [aR, alR, uR] = await Promise.all([
-      fetch(API+'/api/v1/assets', {headers:h}).then(r=>r.ok?r.json():null),
-      fetch(API+'/api/v1/alerts?limit=5', {headers:h}).then(r=>r.ok?r.json():null),
-      fetch(API+'/api/v1/usage', {headers:h}).then(r=>r.ok?r.json():null)
+    const [assetsR, alertsR, usageR] = await Promise.all([
+      fetch(API+'/api/v1/assets', {headers:{'X-API-Key':apiKey}}).then(r=>r.json()),
+      fetch(API+'/api/v1/alerts?limit=5', {headers:{'X-API-Key':apiKey}}).then(r=>r.json()),
+      fetch(API+'/api/v1/usage', {headers:{'X-API-Key':apiKey}}).then(r=>r.json())
     ]);
-    const assets = aR?.assets || [];
-    const alerts = alR || [];
-    const usage = uR || {};
-    document.getElementById('totalTopics').textContent = assets.length || '0';
-    document.getElementById('activeAlerts').textContent = alerts.length || '0';
-    document.getElementById('apiCalls').textContent = usage.request_count || '0';
-    document.getElementById('statusDot').className = 'dot green';
-    document.getElementById('statusText').textContent = 'Connected. API Gateway running on port 8000.';
-    if (assets.length === 0) {
-      document.getElementById('emptyMsg').textContent = 'No topics yet. Click "+ New Topic" to add one.';
-      return;
-    }
-    let totalAmi = 0;
-    let count = 0;
+    const assets = assetsR.assets || [];
+    const alerts = Array.isArray(alertsR) ? alertsR : (alertsR.alerts || []);
+    
+    sessions = {};
+    assets.forEach(a => { 
+      sessions[a.topic_name] = a; 
+      if (!chatHistories[a.topic_name]) chatHistories[a.topic_name] = [];
+    });
+
+    // Stats
+    document.querySelector('.stat-card:nth-child(1) .val').textContent = assets.length;
+    document.querySelector('.stat-card:nth-child(2) .val').textContent = alerts.length;
+    document.querySelector('.stat-card:nth-child(3) .val').textContent = usageR.count || 0;
+
+    // Topic grid
     const grid = document.getElementById('topicGrid');
-    grid.innerHTML = '';
-    for (const t of assets) {
-      try {
-        const r = await fetch(API+'/api/v1/momentum/'+t.asset_id, {headers:h});
-        const d = await r.json();
-        const m = d.metrics || {};
-        const ami = m.ami_score_percentage || 0;
-        count++; totalAmi += Math.abs(ami);
-        const signal = m.signal_class || 'STABLE';
-        const tc = signal==='CRITICAL_ALERT'?'alert':signal==='MARKET_DECAY'?'decay':'stable';
-        const card = document.createElement('div');
-        card.className = 'topic-card';
-        card.innerHTML = '<div class="name">'+t.asset_id.replace(/_/g,' ')+' <span class="tag '+tc+'">'+signal+'</span></div>'+
-          '<div class="keywords">'+(t.geo||'Worldwide')+'</div>'+
-          '<div class="metrics">'+
-          '<div class="metric">AMI <span class="val">'+(ami>=0?'+':'')+ami.toFixed(1)+'%</span></div>'+
-          '<div class="metric">Updated <span class="val">'+(m.last_update?new Date(m.last_update).toLocaleTimeString():'-')+'</span></div></div>';
-        grid.appendChild(card);
-      } catch(e) {}
+    if (assets.length === 0) {
+      grid.innerHTML = '<div style="text-align:center;color:#555;padding:40px;grid-column:1/-1">No topics yet. Click "+ New Session" to add one.</div>';
+    } else {
+      grid.innerHTML = assets.map(a => {
+        const ami = a.ami_score != null ? parseFloat(a.ami_score).toFixed(1) : '—';
+        const up = a.ami_score > 0;
+        const sig = a.signal_class || 'stable';
+        return `<div class="topic-card" onclick="openSession('${a.topic_name}')">
+          <div class="ami ${up?'up':'down'}">${ami}%</div>
+          <h3>${a.topic_name.replace(/_/g,' ')}</h3>
+          <span class="signal ${sig.toLowerCase()}">${sig}</span>
+          <div class="kw">${(a.keywords||[]).join(', ')}</div>
+        </div>`;
+      }).join('');
     }
-    document.getElementById('avgAmi').textContent = count ? (totalAmi/count).toFixed(1)+'%' : '0.0%';
+
+    // Sidebar list
+    renderSidebar();
   } catch(e) {
-    document.getElementById('statusDot').className = 'dot red';
-    document.getElementById('statusText').textContent = 'Could not connect. Make sure the API gateway is running on port 8000.';
+    document.getElementById('topicGrid').innerHTML = '<div style="text-align:center;color:#ff4466;padding:40px;grid-column:1/-1">Could not connect. Is the server running?</div>';
   }
 }
-function addTopic() {
-  const p = prompt('Describe the trend you want to track:');
+
+function renderSidebar() {
+  const list = document.getElementById('sessionList');
+  const names = Object.keys(sessions);
+  if (names.length === 0) {
+    list.innerHTML = '<div class="no-sessions">No sessions yet.<br>Click "+ New Session" to start.</div>';
+    return;
+  }
+  list.innerHTML = names.map(n => {
+    const a = sessions[n];
+    const ami = a.ami_score != null ? parseFloat(a.ami_score).toFixed(1)+'%' : '—';
+    const sig = a.signal_class || 'stable';
+    const active = activeSession === n ? ' active' : '';
+    return `<div class="session-item${active}" onclick="openSession('${n}')">
+      <div class="name">${n.replace(/_/g,' ')}</div>
+      <div class="meta"><span class="signal ${sig.toLowerCase()}">${sig}</span> ${ami}</div>
+    </div>`;
+  }).join('');
+}
+
+function openSession(name) {
+  activeSession = name;
+  renderSidebar();
+  
+  const main = document.getElementById('mainArea');
+  const h = sessions[name];
+  const sig = h ? (h.signal_class||'stable') : 'stable';
+  
+  const msgs = chatHistories[name] || [];
+  const msgHtml = msgs.length === 0 
+    ? '<div class="welcome-message"><p>👋 Chat with AI about <b>'+name.replace(/_/g,' ')+'</b></p><p style="font-size:12px">Ask about trend analysis, set alerts, or change thresholds</p></div>'
+    : msgs.map(m => {
+      const actions = m.actions && m.actions.length ? '<div class="actions">✓ '+m.actions.join(', ')+'</div>' : '';
+      return `<div class="msg ${m.role}"><div>${m.text}</div>${actions}<div class="time">${m.time||''}</div></div>`;
+    }).join('');
+
+  main.innerHTML = `
+    <div class="chat-header">
+      <h2>${name.replace(/_/g,' ')}</h2>
+      <span class="model-badge">${selectedModel}</span>
+      <div class="status"><span class="dot ${sig==='STABLE'?'green':'yellow'}"></span>${sig}</div>
+      <button class="new-btn" style="width:auto;padding:6px 12px;font-size:12px;margin-left:auto" onclick="switchToDashboard()">📊 Dashboard</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">${msgHtml}</div>
+    <div class="chat-input">
+      <textarea id="chatInput" placeholder="Ask about this trend..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+      <button id="chatSendBtn" onclick="sendChat()">Send</button>
+    </div>
+  `;
+  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+  document.getElementById('chatInput').focus();
+}
+
+function switchToDashboard() {
+  activeSession = null;
+  document.getElementById('mainArea').innerHTML = `
+    <div class="dashboard" id="dashboardView">
+      <h1>📊 TrendGoogle</h1>
+      <p class="subtitle">AI-powered demand research &amp; data arbitrage</p>
+      <div class="stats" id="statsRow">
+        <div class="stat-card"><div class="val">—</div><div class="label">Topics</div></div>
+        <div class="stat-card"><div class="val">—</div><div class="label">Alerts</div></div>
+        <div class="stat-card"><div class="val">—</div><div class="label">API Calls</div></div>
+      </div>
+      <div class="topic-grid" id="topicGrid"></div>
+    </div>`;
+  renderSidebar();
+  loadDashboard();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('chatSendBtn');
+  const msg = input.value.trim();
+  if (!msg || !activeSession) return;
+  input.value = ''; btn.disabled = true;
+
+  // Add user message
+  const hist = chatHistories[activeSession] || [];
+  hist.push({role:'user', text:msg, time:new Date().toLocaleTimeString()});
+  chatHistories[activeSession] = hist;
+
+  // Show thinking indicator
+  const msgsDiv = document.getElementById('chatMessages');
+  msgsDiv.innerHTML += '<div class="msg assistant" id="thinkingMsg"><div style="color:#888">Thinking...</div></div>';
+  msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+  try {
+    const r = await fetch(API+'/api/v1/chat/'+activeSession, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+      body:JSON.stringify({message:msg, model:selectedModel})
+    });
+    const data = await r.json();
+    
+    // Remove thinking indicator
+    const t = document.getElementById('thinkingMsg');
+    if (t) t.remove();
+
+    if (data.detail) {
+      hist.push({role:'assistant', text:'Error: '+data.detail, time:new Date().toLocaleTimeString()});
+    } else {
+      hist.push({role:'assistant', text:data.reply, actions:data.actions_taken, time:new Date().toLocaleTimeString()});
+    }
+    
+    // Re-render messages
+    msgsDiv.innerHTML = hist.map(m => {
+      const actions = m.actions && m.actions.length ? '<div class="actions">✓ '+m.actions.join(', ')+'</div>' : '';
+      return `<div class="msg ${m.role}"><div>${m.text}</div>${actions}<div class="time">${m.time||''}</div></div>`;
+    }).join('');
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+  } catch(e) {
+    const t = document.getElementById('thinkingMsg');
+    if (t) t.remove();
+    hist.push({role:'assistant', text:'Could not reach the AI. Is the server running?', time:new Date().toLocaleTimeString()});
+    msgsDiv.innerHTML = hist.map(m => `<div class="msg ${m.role}"><div>${m.text}</div><div class="time">${m.time||''}</div></div>`).join('');
+  }
+  btn.disabled = false;
+  document.getElementById('chatInput').focus();
+}
+
+function newSession() {
+  const p = prompt('What trend do you want to research?');
   if (!p) return;
-  const btn = document.querySelector('.btn');
-  btn.textContent = 'Analyzing...'; btn.disabled = true;
+  
+  // Open dashboard while processing
+  switchToDashboard();
+  
   fetch(API+'/api/v1/discover', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json', 'X-API-Key': apiKey},
-    body: JSON.stringify({prompt: p})
-  }).then(r => r.json()).then(d => {
-    btn.textContent = '+ New Topic'; btn.disabled = false;
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-API-Key':apiKey},
+    body:JSON.stringify({prompt:p, model:selectedModel})
+  }).then(r=>r.json()).then(d => {
     const err = d.message || d.detail || null;
     if (err) { alert('Error: '+err); return; }
-    if (!d.topic_name) { alert('Unexpected response from server'); return; }
-    alert('✅ '+d.topic_name.replace(/_/g,' ')+' added!\n\nKeywords: '+d.keywords.join(', ')+
-      '\nVolume: '+(d.analysis?.volume_estimate||'?')+
-      '\nStrategy: '+(d.analysis?.suggested_strategy||'—'));
-    load();
-  }).catch(e => {
-    btn.textContent = '+ New Topic'; btn.disabled = false;
-    alert('Error: '+e.message);
-  });
+    alert('✅ '+d.topic_name.replace(/_/g,' ')+' added!\nKeywords: '+d.keywords.join(', '));
+    loadDashboard();
+    setTimeout(() => openSession(d.topic_name), 300);
+  }).catch(e => { alert('Error: '+e.message); loadDashboard(); });
 }
-load();
-setInterval(load, 30000);
+
+// Load on start
+loadDashboard();
+setInterval(loadDashboard, 15000);
 </script>
 </body>
 </html>

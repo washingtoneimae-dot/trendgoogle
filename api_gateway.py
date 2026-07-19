@@ -145,10 +145,20 @@ def log_api_usage(user_id: int, endpoint: str, response_time_ms: float):
 def dashboard():
     """TrendGoogle Dashboard UI"""
     from fastapi.responses import HTMLResponse
-    import os
+    import os, sqlite3
     html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
     if os.path.exists(html_path):
-        return HTMLResponse(content=open(html_path).read())
+        html = open(html_path).read()
+        # Inject API key so user doesn't need to enter it
+        try:
+            db_path = os.path.join(os.path.dirname(__file__), "arbitrage_flywheel.db")
+            conn = sqlite3.connect(db_path)
+            key = conn.execute("SELECT api_key FROM api_users LIMIT 1").fetchone()[0]
+            conn.close()
+            html = html.replace('</head>', f'<script>var INJECTED_KEY="{key}";</script>\n</head>')
+        except:
+            pass
+        return HTMLResponse(content=html)
     return HTMLResponse("<h1>Dashboard not found</h1><p>Run from the trendgoogle directory.</p>")
 
 # ============================================================================
@@ -386,6 +396,7 @@ def get_usage_stats(user: dict = Depends(verify_api_key)):
 
 class DiscoverRequest(BaseModel):
     prompt: str
+    model: str = "gemini-3.1-flash-lite"
 
 class DiscoverResponse(BaseModel):
     topic_name: str
@@ -404,7 +415,7 @@ def discover_trend(req: DiscoverRequest, user: dict = Depends(verify_api_key)):
 
     load_env()
     try:
-        result = parse_with_gemini(req.prompt)
+        result = parse_with_gemini(req.prompt, req.model)
     except ValueError as e:
         raise HTTPException(400, str(e))
     valid = validate_keywords(result)
@@ -432,6 +443,148 @@ def discover_trend(req: DiscoverRequest, user: dict = Depends(verify_api_key)):
         alert_config=alert_config,
         saved=True
     )
+
+# ============================================================================
+# CHAT ENDPOINT (Session-based AI Assistant)
+# ============================================================================
+
+class ChatRequest(BaseModel):
+    message: str
+    model: str = "gemini-3.1-flash-lite"
+
+class ChatResponse(BaseModel):
+    reply: str
+    actions_taken: list = []
+
+@app.post("/api/v1/chat/{topic_name}", tags=["Chat"])
+def chat_with_trend(topic_name: str, req: ChatRequest, user: dict = Depends(verify_api_key)):
+    """Chat with the AI about a specific trend session. Can modify alerts, thresholds, and give analysis."""
+    import sqlite3, json, os
+    from trendfinder import load_env, get_api_key
+
+    db_path = os.path.join(os.path.dirname(__file__), "arbitrage_flywheel.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    # Get profile
+    profile = c.execute("SELECT rowid,* FROM active_profiles WHERE topic_name=?", (topic_name,)).fetchone()
+    if not profile:
+        conn.close()
+        raise HTTPException(404, f"Topic '{topic_name}' not found")
+
+    profile = dict(profile)
+
+    # Get recent monitoring history (last 10)
+    history = c.execute(
+        "SELECT timestamp, ami_score, signal_class FROM monitoring_history WHERE topic_name=? ORDER BY id DESC LIMIT 10",
+        (topic_name,)
+    ).fetchall()
+
+    # Get recent alerts
+    alerts = c.execute(
+        "SELECT alert_type, signal_confidence, timestamp FROM alert_log WHERE topic_name=? ORDER BY id DESC LIMIT 5",
+        (topic_name,)
+    ).fetchall()
+
+    conn.close()
+
+    # Build context for the AI
+    context = {
+        "topic": profile["topic_name"],
+        "keywords": json.loads(profile.get("keywords", "[]")),
+        "spike_threshold": profile.get("spike_threshold", 25.0),
+        "drop_threshold": profile.get("drop_threshold", -25.0),
+        "monitor_enabled": bool(profile.get("monitor_enabled", 1)),
+        "alert_on_spike": bool(profile.get("alert_on_spike", 1)),
+        "alert_on_drop": bool(profile.get("alert_on_drop", 1)),
+        "recent_history": [dict(h) for h in history],
+        "recent_alerts": [dict(a) for a in alerts],
+        "latest_ami": history[0]["ami_score"] if history else None,
+        "latest_signal": history[0]["signal_class"] if history else "No data yet",
+    }
+
+    # System prompt for the demand research / arbitrage assistant
+    system_prompt = """You are an AI Demand Research & Data Arbitrage Assistant. You help users analyze market trends, set up monitoring, and configure alerts.
+
+Current trend context (JSON):
+""" + json.dumps(context, indent=2, default=str) + """
+
+Your capabilities:
+1. **Analyze trends** - Explain what the data means, the direction of the trend, opportunities
+2. **Configure alerts** - User can ask to change thresholds. Reply with `[ACTION]` tags when you make changes:
+   - `[SET_THRESHOLD:spike=30]` - Set spike threshold to 30%
+   - `[SET_THRESHOLD:drop=-20]` - Set drop threshold to -20%
+   - `[TOGGLE_ALERT:spike=on]` or `[TOGGLE_ALERT:spike=off]` - Enable/disable spike alerts
+   - `[TOGGLE_ALERT:drop=on]` or `[TOGGLE_ALERT:drop=off]` - Enable/disable drop alerts
+   - `[MONITOR:on]` or `[MONITOR:off]` - Enable/disable monitoring
+
+3. **Give actionable advice** - When to buy/sell/hold based on trend signal
+4. **Research suggestions** - Suggest related keywords or markets to explore
+
+Be concise, direct, and useful. Use data from the context. If the user asks about a different topic, tell them to switch sessions in the sidebar."""
+
+    load_env()
+    import google.genai as genai
+    api_key = get_api_key()
+    if not api_key:
+        raise HTTPException(400, "GEMINI_API_KEY not set on server")
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=req.model,
+        contents=[
+            {"role": "user", "parts": [{"text": system_prompt + "\n\nUser message: " + req.message}]}
+        ],
+        config={"response_mime_type": "text/plain"}
+    )
+
+    reply = response.text
+    actions_taken = []
+
+    # Parse action tags from AI response and execute them
+    import re
+    conn2 = sqlite3.connect(db_path)
+    c2 = conn2.cursor()
+
+    for match in re.finditer(r'\[SET_THRESHOLD:spike=([\d.-]+)\]', reply):
+        val = float(match.group(1))
+        c2.execute("UPDATE active_profiles SET spike_threshold=? WHERE topic_name=?", (val, topic_name))
+        actions_taken.append(f"Spike threshold set to {val}%")
+
+    for match in re.finditer(r'\[SET_THRESHOLD:drop=([\d.-]+)\]', reply):
+        val = float(match.group(1))
+        c2.execute("UPDATE active_profiles SET drop_threshold=? WHERE topic_name=?", (val, topic_name))
+        actions_taken.append(f"Drop threshold set to {val}%")
+
+    if '[TOGGLE_ALERT:spike=on]' in reply:
+        c2.execute("UPDATE active_profiles SET alert_on_spike=1 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Spike alerts enabled")
+    elif '[TOGGLE_ALERT:spike=off]' in reply:
+        c2.execute("UPDATE active_profiles SET alert_on_spike=0 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Spike alerts disabled")
+
+    if '[TOGGLE_ALERT:drop=on]' in reply:
+        c2.execute("UPDATE active_profiles SET alert_on_drop=1 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Drop alerts enabled")
+    elif '[TOGGLE_ALERT:drop=off]' in reply:
+        c2.execute("UPDATE active_profiles SET alert_on_drop=0 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Drop alerts disabled")
+
+    if '[MONITOR:on]' in reply:
+        c2.execute("UPDATE active_profiles SET monitor_enabled=1 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Monitoring enabled")
+    elif '[MONITOR:off]' in reply:
+        c2.execute("UPDATE active_profiles SET monitor_enabled=0 WHERE topic_name=?", (topic_name,))
+        actions_taken.append("Monitoring disabled")
+
+    # Clean action tags from the reply for display
+    clean_reply = re.sub(r'\[(SET_THRESHOLD|TOGGLE_ALERT|MONITOR):[^\]]*\]', '', reply).strip()
+
+    conn2.commit()
+    conn2.close()
+
+    return ChatResponse(reply=clean_reply, actions_taken=actions_taken)
 
 # ============================================================================
 # ERROR HANDLERS
