@@ -8,6 +8,7 @@ Secure API key validation on every request
 from fastapi import FastAPI, Depends, HTTPException, Security, Query
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3
@@ -137,24 +138,14 @@ def log_api_usage(user_id: int, endpoint: str, response_time_ms: float):
 # ============================================================================
 
 @app.get("/", response_model=HealthResponse, tags=["Health"])
-def health_check():
-    """System health check - No authentication required"""
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM monitoring_history")
-        cursor.fetchone()
-        conn.close()
-        db_ok = True
-    except:
-        db_ok = False
-    
-    return HealthResponse(
-        status="online",
-        engine="Arbitrage Flywheel Core",
-        version="1.0.0",
-        database_connected=db_ok
-    )
+def dashboard():
+    """TrendGoogle Dashboard UI"""
+    from fastapi.responses import HTMLResponse
+    import os
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    if os.path.exists(html_path):
+        return HTMLResponse(content=open(html_path).read())
+    return HTMLResponse("<h1>Dashboard not found</h1><p>Run from the trendgoogle directory.</p>")
 
 # ============================================================================
 # PROTECTED ENDPOINTS (API Key Required)
