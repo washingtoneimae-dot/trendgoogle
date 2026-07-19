@@ -100,9 +100,7 @@ def parse_with_gemini(prompt: str) -> dict:
     load_env()
     api_key = get_api_key()
     if not api_key:
-        print("[ERROR] Set GEMINI_API_KEY environment variable")
-        print("  Or run: python trendfinder.py --setup")
-        sys.exit(1)
+        raise ValueError("GEMINI_API_KEY not set. Run `python trendfinder.py --setup` to configure it.")
 
     client = genai.Client(api_key=api_key)
     full_prompt = f"{MASTER_PROMPT}\n\nUser prompt: {prompt}"

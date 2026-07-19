@@ -153,7 +153,9 @@ function addTopic() {
     body: JSON.stringify({prompt: p})
   }).then(r => r.json()).then(d => {
     btn.textContent = '+ New Topic'; btn.disabled = false;
-    if (d.detail) { alert('Error: '+d.detail); return; }
+    const err = d.message || d.detail || null;
+    if (err) { alert('Error: '+err); return; }
+    if (!d.topic_name) { alert('Unexpected response from server'); return; }
     alert('✅ '+d.topic_name.replace(/_/g,' ')+' added!\n\nKeywords: '+d.keywords.join(', ')+
       '\nVolume: '+(d.analysis?.volume_estimate||'?')+
       '\nStrategy: '+(d.analysis?.suggested_strategy||'—'));

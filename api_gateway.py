@@ -403,7 +403,10 @@ def discover_trend(req: DiscoverRequest, user: dict = Depends(verify_api_key)):
     from trendfinder import parse_with_gemini, validate_keywords, save_profile, ensure_alert_config_columns, load_env
 
     load_env()
-    result = parse_with_gemini(req.prompt)
+    try:
+        result = parse_with_gemini(req.prompt)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     valid = validate_keywords(result)
     if not valid:
         raise HTTPException(400, "Keywords returned no data. Try a broader topic.")
