@@ -9,11 +9,12 @@ import sqlite3
 import secrets
 import json
 
+DB_PATH = 'arbitrage_flywheel.db'
+
 def setup_api_users():
     """Create api_users table and insert test user with API key"""
     
-    db_path = r'C:\Users\someone\OneDrive\Documents\New folder (2)\arbitrage_flywheel.db'
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # Create table for users and their API keys
@@ -51,7 +52,7 @@ def setup_api_users():
         )
         conn.commit()
         print("[OK] API Users table created")
-        print(f"[OK] Test user created")
+        print("[OK] Test user created")
         print(f"\n[API_KEY] sk_live_{test_key.split('sk_live_')[1]}")
         print(f"[USERNAME] test_arbitrageur")
         print(f"[TIER] pro")

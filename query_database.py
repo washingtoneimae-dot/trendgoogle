@@ -2,8 +2,8 @@
 import sqlite3
 import json
 
-db_path = r'C:\Users\someone\OneDrive\Documents\New folder (2)\arbitrage_flywheel.db'
-conn = sqlite3.connect(db_path)
+DB_PATH = 'arbitrage_flywheel.db'
+conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 

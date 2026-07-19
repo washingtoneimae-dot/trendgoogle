@@ -9,10 +9,10 @@ import json
 from datetime import datetime
 
 # Database path
-DB_PATH = r'C:\Users\someone\OneDrive\Documents\New folder (2)\arbitrage_flywheel.db'
+DB_PATH = 'arbitrage_flywheel.db'
 
 # Connect to database
-conn = sqlite3.connect(db_path)
+conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
 # Create persistent tables for the efficiency flywheel
@@ -78,7 +78,7 @@ conn.commit()
 conn.close()
 
 print("[OK] Database initialized successfully")
-print(f"[DB] Database: {db_path}")
+print(f"[DB] Database: {DB_PATH}")
 print("[SCHEMA] Tables created: active_profiles, monitoring_history, alert_log, drift_detection")
 print("[PROFILE] rajasthan_copper_scrap inserted")
 print(f"   Keywords: ['copper price', 'copper scrap', 'copper trading', 'raw copper']")
