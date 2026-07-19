@@ -12,8 +12,8 @@ import random
 from datetime import datetime, timedelta
 from pytrends.request import TrendReq
 
-# Database path (OneDrive folder)
-DB_PATH = r'C:\Users\someone\OneDrive\Documents\New folder (2)\arbitrage_flywheel.db'
+# Database path (relative to working directory)
+DB_PATH = 'arbitrage_flywheel.db'
 
 # TrendReq instance
 pytrend = TrendReq(hl='en-US', tz=360)

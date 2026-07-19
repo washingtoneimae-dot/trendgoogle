@@ -41,7 +41,7 @@ app.add_middleware(
 # CONFIGURATION
 # ============================================================================
 
-DB_PATH = r'C:\Users\someone\OneDrive\Documents\New folder (2)\arbitrage_flywheel.db'
+DB_PATH = 'arbitrage_flywheel.db'
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
