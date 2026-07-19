@@ -8,13 +8,17 @@ Secure API key validation on every request
 from fastapi import FastAPI, Depends, HTTPException, Security, Query
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3
 import json
 from datetime import datetime
 import time
+import sys
+import os
+
+# Add project root to path so we can import trendfinder
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # ============================================================================
 # FASTAPI APP SETUP
@@ -137,7 +141,7 @@ def log_api_usage(user_id: int, endpoint: str, response_time_ms: float):
 # PUBLIC ENDPOINTS
 # ============================================================================
 
-@app.get("/", response_model=HealthResponse, tags=["Health"])
+@app.get("/")
 def dashboard():
     """TrendGoogle Dashboard UI"""
     from fastapi.responses import HTMLResponse
@@ -377,18 +381,72 @@ def get_usage_stats(user: dict = Depends(verify_api_key)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 # ============================================================================
+# TREND DISCOVERY ENDPOINT
+# ============================================================================
+
+class DiscoverRequest(BaseModel):
+    prompt: str
+
+class DiscoverResponse(BaseModel):
+    topic_name: str
+    keywords: list
+    analysis: dict
+    alert_config: dict
+    saved: bool
+
+@app.post("/api/v1/discover", response_model=DiscoverResponse, tags=["Discovery"])
+def discover_trend(req: DiscoverRequest, user: dict = Depends(verify_api_key)):
+    """
+    Analyze a user prompt with AI, find relevant keywords,
+    validate against Google Trends, and save as a new monitoring profile.
+    """
+    from trendfinder import parse_with_gemini, validate_keywords, save_profile, ensure_alert_config_columns, load_env
+
+    load_env()
+    result = parse_with_gemini(req.prompt)
+    valid = validate_keywords(result)
+    if not valid:
+        raise HTTPException(400, "Keywords returned no data. Try a broader topic.")
+    alert_config = result.get("alert_config", {})
+
+    # Ensure DB has new columns
+    db_path = os.path.join(os.path.dirname(__file__), "arbitrage_flywheel.db")
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    cols = {row[1] for row in c.execute("PRAGMA table_info(active_profiles)")}
+    for col, dtype in [("spike_threshold","REAL DEFAULT 25.0"),("drop_threshold","REAL DEFAULT -25.0"),("monitor_enabled","INTEGER DEFAULT 1"),("alert_on_spike","INTEGER DEFAULT 1"),("alert_on_drop","INTEGER DEFAULT 1")]:
+        if col not in cols:
+            c.execute(f"ALTER TABLE active_profiles ADD COLUMN {col} {dtype}")
+    conn.commit(); conn.close()
+
+    save_profile(result, alert_config)
+
+    return DiscoverResponse(
+        topic_name=result.get("topic_name","unknown"),
+        keywords=result.get("keywords",[]),
+        analysis=result.get("analysis",{}),
+        alert_config=alert_config,
+        saved=True
+    )
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     """Custom error response formatting"""
-    return {
-        "status": "error",
-        "error_code": exc.status_code,
-        "message": exc.detail,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={
+            "status": "error",
+            "error_code": exc.status_code,
+            "message": exc.detail,
+            "timestamp": datetime.utcnow().isoformat()
+        },
+        status_code=exc.status_code
+    )
 
 # ============================================================================
 # RUN
