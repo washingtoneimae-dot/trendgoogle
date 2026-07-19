@@ -46,8 +46,8 @@ MASTER_PROMPT = """You are an elite market trend analyst AI. Your job is to anal
 
 Your mission:
 1. Determine what SPECIFIC, HIGH-VALUE items/niches/topics the user can monitor for arbitrage or market advantage.
-2. Find keywords that have REAL Google search volume (not technical jargon, not zero-volume terms).
-3. Return not just the keywords, but the insights that make them valuable.
+2. Find keywords that have REAL Google search volume (not hyper-niche zero-volume junk).
+3. Return not just the keywords, but the insights AND automatically configure monitoring based on the user's tone.
 
 Here is what your OUTPUT must include:
 
@@ -64,15 +64,29 @@ Here is what your OUTPUT must include:
     "competition_level": "low|medium|high",
     "optimal_season": "string describing best time of year",
     "suggested_strategy": "string: what someone should do with this insight"
+  },
+  "alert_config": {
+    "spike_threshold": 25.0,
+    "drop_threshold": -25.0,
+    "alert_on_spike": true,
+    "alert_on_drop": true
   }
 }
 
+For alert_config, interpret the user's INTENT:
+- If they say things like "aggressive", "jumps", "surge", "spike" → use lower spike_threshold (10-15)
+- If they say "crash", "drop", "decline", "decay" → use less negative drop_threshold (-10 to -15)
+- If they say "conservative", "slow", "gradual" → use wider thresholds (30-40)
+- If they say "monitor silently", "just track" → set both to false
+- If they mention specific numbers like "30 percent" → use those
+- Default: spike 25, drop -25
+
 RULES:
 - PREFER keywords with actual search volume. Do people realistically type this into Google?
-- ALWAYS provide analysis. Raw keywords alone are not enough.
+- ALWAYS provide analysis and alert_config. The user should not have to configure anything manually.
 - If no single country is obvious, use geo="" for worldwide.
 - topic_name must be a valid, unique, URL-safe snake_case identifier.
-- If the user asks something too vague or impossible, explain why and suggest an alternative.
+- If the user asks something impossible, explain why and suggest an alternative.
 - Return ONLY valid JSON. No markdown fences, no text outside the JSON."""
 
 
@@ -296,12 +310,13 @@ def chat_loop():
     print(f"\n{'='*60}")
     print("  TRENDFINDER — Market Trend Discovery Chat")
     print(f"{'='*60}")
-    print("  Type a market, topic, or niche you want to explore.")
+    print("  Describe a market, niche, or topic you want to track.")
+    print("  Include any preferences (aggressive, conservative, etc.)")
+    print("  The AI configures everything automatically.")
     print("  Examples:")
-    print("    'electric vehicle batteries in Kenya'")
-    print("    'solar panel installation costs USA'")
-    print("    'AI freelancing rates 2026'")
-    print("    'copper scrap trading India'")
+    print("    'copper scrap trading India — aggressive spike alerts'")
+    print("    'electric vehicle batteries in Kenya, just monitor quietly'")
+    print("    'bitcoin mining profitability — alert me on any big drop'")
     print("    'quit' to exit")
     print(f"{'='*60}\n")
 
@@ -322,7 +337,7 @@ def chat_loop():
 
         print()
 
-        # Step 1: LLM analyzes
+        # Step 1: LLM analyzes + configures everything
         result = parse_with_gemini(prompt)
         print(f"\n[LLM RESULT]")
         print(json.dumps(result, indent=2))
@@ -335,24 +350,36 @@ def chat_loop():
             print("\n  Those keywords returned no data. Try a broader topic.\n")
             continue
 
-        # Step 3: Interactive config
-        print(f"\n{'='*50}")
-        print("[STEP] Configuring monitoring...")
-        alert_config = prompt_alert_config(result)
+        # Step 3: Extract alert config from LLM output (auto mode)
+        alert_config = result.get("alert_config", {})
+        if not alert_config:
+            # Fallback: manual config if LLM didn't provide it
+            print("\n  [LLM didn't configure alerts. Manual setup:]")
+            alert_config = prompt_alert_config(result)
+        else:
+            print(f"\n  [AI Auto-Configured Alerts] ✓")
 
         # Step 4: Save
         print(f"\n{'='*50}")
         print("[STEP] Saving to database...")
         save_profile(result, alert_config)
 
-        print(f"\n✅ Monitoring active! The daemon is tracking:")
-        print(f"   Keywords: {', '.join(result['keywords'])}")
-        print(f"   Location: {result.get('geo', 'Worldwide')}")
-        if alert_config.get("alert_on_spike"):
-            print(f"   Alert: Spike > +{alert_config['spike_threshold']}% AMI")
-        if alert_config.get("alert_on_drop"):
-            print(f"   Alert: Drop < {alert_config['drop_threshold']}% AMI")
-        print(f"\n   Type another topic or 'quit' to exit.\n")
+        # Step 5: AI gives a natural feedback summary
+        analysis = result.get("analysis", {})
+        ac = alert_config
+        print(f"\n{'='*60}")
+        print(f"  ✅ DONE — {result['topic_name']} is now active!")
+        print(f"  Keywords: {', '.join(result['keywords'])}")
+        print(f"  Region:   {result.get('geo', 'Worldwide')}")
+        print(f"  Volume:   {analysis.get('volume_estimate', '?')}")
+        if ac.get("alert_on_spike"):
+            print(f"  🔺 Spike alert: > +{ac['spike_threshold']}% AMI")
+        if ac.get("alert_on_drop"):
+            print(f"  🔻 Drop alert:  < {ac['drop_threshold']}% AMI")
+        if analysis.get("suggested_strategy"):
+            print(f"\n  💡 {analysis['suggested_strategy']}")
+        print(f"{'='*60}")
+        print(f"\n  Type another topic or 'quit' to exit.\n")
 
 
 def main():
