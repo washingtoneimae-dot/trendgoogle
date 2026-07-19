@@ -23,7 +23,7 @@ def load_active_profiles():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM active_profiles WHERE topic_name != ""')
+    cursor.execute('SELECT * FROM active_profiles WHERE topic_name != "" AND monitor_enabled = 1')
     profiles = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return profiles
@@ -99,11 +99,11 @@ def calculate_ami(profile, current_data):
         print(f"[ERROR] AMI calculation failed: {str(e)}")
         return 0.0
 
-def classify_signal(ami_score):
-    """Classify signal based on AMI threshold"""
-    if ami_score > 25:
+def classify_signal(ami_score, spike_threshold=25.0, drop_threshold=-25.0):
+    """Classify signal based on per-profile thresholds"""
+    if ami_score > spike_threshold:
         return "CRITICAL_ALERT"
-    elif ami_score < -25:
+    elif ami_score < drop_threshold:
         return "MARKET_DECAY"
     else:
         return "STABLE"
@@ -140,11 +140,29 @@ def log_monitoring_result(profile, current_data, ami_score, signal_class):
         print(f"[ERROR] Failed to log result: {str(e)}")
 
 def trigger_alert(profile, ami_score, signal_class):
-    """Trigger and log alert if anomaly detected"""
+    """Trigger and log alert if anomaly detected using per-profile thresholds"""
     try:
-        if abs(ami_score) > 25:
-            alert_type = "HIGH_SPIKE" if ami_score > 25 else "SHARP_DECLINE"
-            signal_confidence = min(abs(ami_score) / 100, 1.0)  # 0.0-1.0
+        spike_threshold = profile.get('spike_threshold', 25.0)
+        drop_threshold = profile.get('drop_threshold', -25.0)
+
+        alert_on_spike = profile.get('alert_on_spike', 1)
+        alert_on_drop = profile.get('alert_on_drop', 1)
+
+        triggered = False
+
+        if ami_score > spike_threshold and alert_on_spike:
+            alert_type = "HIGH_SPIKE"
+            signal_confidence = min(abs(ami_score) / 100, 1.0)
+            triggered = True
+        elif ami_score < drop_threshold and alert_on_drop:
+            alert_type = "SHARP_DECLINE"
+            signal_confidence = min(abs(ami_score) / 100, 1.0)
+            triggered = True
+        else:
+            triggered = False
+
+        if not triggered:
+            return
             
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
@@ -223,7 +241,9 @@ def run_monitoring_cycle():
         
         # Step 2: Calculate AMI
         ami_score = calculate_ami(profile, current_data)
-        signal_class = classify_signal(ami_score)
+        spike_th = profile.get('spike_threshold', 25.0)
+        drop_th = profile.get('drop_threshold', -25.0)
+        signal_class = classify_signal(ami_score, spike_th, drop_th)
         
         # Step 3: Log results
         log_monitoring_result(profile, current_data, ami_score, signal_class)
